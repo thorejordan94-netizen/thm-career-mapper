@@ -1,0 +1,63 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: thm
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/thm?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      NEXTAUTH_SECRET: "replace_me_in_prod"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "adminadmin"
+      SCRAPE_CONCURRENCY: 2
+      SCRAPE_DELAY_MS: 900
+      SCRAPE_JITTER_MS: 500
+      SCRAPE_MAX_RETRIES: 2
+      SCRAPE_STORE_HTML: "false"
+    ports:
+      - "3000:3000"
+    command: ["npm", "run", "start"]
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      - db
+      - redis
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/thm?schema=public"
+      REDIS_URL: "redis://redis:6379"
+      NEXTAUTH_SECRET: "replace_me_in_prod"
+      NEXTAUTH_URL: "http://localhost:3000"
+      ADMIN_EMAIL: "admin@example.com"
+      ADMIN_PASSWORD: "adminadmin"
+      SCRAPE_CONCURRENCY: 2
+      SCRAPE_DELAY_MS: 900
+      SCRAPE_JITTER_MS: 500
+      SCRAPE_MAX_RETRIES: 2
+      SCRAPE_STORE_HTML: "false"
+    command: ["npm", "run", "worker"]
+
+volumes:
+  db_data:
