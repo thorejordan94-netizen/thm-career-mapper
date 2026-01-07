@@ -24,7 +24,9 @@ export default async function RoomsPage({
           }
         : {}),
       ...(difficulty ? { difficulty: { equals: difficulty, mode: "insensitive" } } : {}),
-      ...(status ? { scrapeStatus: status as any } : {}),
+      ...(status && ["OK", "PENDING", "FAILED"].includes(status)
+        ? { scrapeStatus: status as "OK" | "PENDING" | "FAILED" }
+        : {}),
     },
     orderBy: [{ updatedAt: "desc" }],
     take: 120,
@@ -42,4 +44,3 @@ export default async function RoomsPage({
     </main>
   );
 }
-

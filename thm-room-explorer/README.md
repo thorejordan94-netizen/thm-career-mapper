@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# THM Room Explorer
 
-## Getting Started
+Dark-mode dashboard + room grid + admin scraper for TryHackMe rooms.
 
-First, run the development server:
+## Stack
+
+- Next.js (App Router) + TypeScript + Tailwind
+- PostgreSQL + Prisma
+- BullMQ + Redis (job queue)
+- Playwright + Cheerio (scraper)
+- NextAuth (Credentials) + simple RBAC (admin)
+
+## Quickstart (Docker)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd thm-room-explorer
+docker compose up -d --build
+
+# run migrations + seed (creates admin user + seeds room slugs)
+docker compose exec web npm run db:migrate
+docker compose exec web npm run db:seed
+
+# open app
+curl http://localhost:3000/api/health
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Start a scrape:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Open `http://localhost:3000/admin`
+- Login using `ADMIN_EMAIL` / `ADMIN_PASSWORD` (from `docker-compose.yml` or `.env`)
+- Go to **Scraper** and start **incremental** or **full**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local dev (without Docker)
 
-## Learn More
+1) Create Postgres + Redis locally
+2) Copy/edit `thm-room-explorer/.env`
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+cd thm-room-explorer
+npm i
+npm run db:migrate
+npm run db:seed
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# terminal 1
+npm run dev
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# terminal 2
+npm run worker
+```
 
-## Deploy on Vercel
+## Admin routes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `/admin/scraper` start run + view queue
+- `/admin/rooms` list/search rooms
+- `/admin/rooms/[slug]` edit tags/tools/lessons and override relevance
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Exports
+
+```bash
+npm run export:json
+npm run export:csv
+```
+
+Outputs: `export.rooms.json`, `export.rooms.csv`.
+
+## Notes
+
+- The spec markdown currently contains **954 unique slugs** due to duplicates in the list; the seed script uses the unique set.
+- Scraper only fetches publicly accessible room pages and uses conservative delay + low concurrency.
+- Optional authenticated mode exists via `SCRAPE_AUTH_COOKIE` (user-provided only).
+

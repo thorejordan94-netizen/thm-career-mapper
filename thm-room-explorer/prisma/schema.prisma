@@ -53,28 +53,28 @@ model Room {
   scrapeError   String?      @db.Text
   rawSourceHash String?
 
-  roomTags            RoomTag[]
+  roomTags             RoomTag[]
   relevanceAssessments RelevanceAssessment[]
-  scrapeJobs          ScrapeJob[]
+  scrapeJobs           ScrapeJob[]
 }
 
 model Tag {
-  id              String   @id @default(uuid()) @db.Uuid
-  nameCanonical   String   @unique
-  displayName     String
-  type            TagType
-  primaryCluster  String?
+  id               String   @id @default(uuid()) @db.Uuid
+  nameCanonical    String   @unique
+  displayName      String
+  type             TagType
+  primaryCluster   String?
   secondaryCluster String?
-  confidence      Float?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  confidence       Float?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   roomTags RoomTag[]
 }
 
 model RoomTag {
-  roomId       String @db.Uuid
-  tagId        String @db.Uuid
+  roomId       String   @db.Uuid
+  tagId        String   @db.Uuid
   originalText String
   createdAt    DateTime @default(now())
 
@@ -86,13 +86,13 @@ model RoomTag {
 }
 
 model RelevanceAssessment {
-  id            String              @id @default(uuid()) @db.Uuid
-  roomId        String              @db.Uuid
+  id            String               @id @default(uuid()) @db.Uuid
+  roomId        String               @db.Uuid
   rubricKey     String
   score         Int?
-  justification String?             @db.Text
+  justification String?              @db.Text
   generatedBy   RelevanceGeneratedBy @default(auto)
-  updatedAt     DateTime            @updatedAt
+  updatedAt     DateTime             @updatedAt
 
   room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
@@ -101,28 +101,30 @@ model RelevanceAssessment {
 }
 
 model ScrapeRun {
-  id         String   @id @default(uuid()) @db.Uuid
+  id         String    @id @default(uuid()) @db.Uuid
   mode       String
-  startedAt  DateTime @default(now())
+  startedAt  DateTime  @default(now())
   finishedAt DateTime?
-  status     String   @default("RUNNING")
-  stats      Json     @default("{}")
-  logs       Json     @default("[]")
+  status     String    @default("RUNNING")
+  stats      Json      @default("{}")
+  logs       Json      @default("[]")
+
+  jobs ScrapeJob[]
 }
 
 model ScrapeJob {
-  id         String   @id @default(uuid()) @db.Uuid
-  runId      String?  @db.Uuid
-  roomId     String   @db.Uuid
-  status     String   @default("QUEUED")
-  attempts   Int      @default(0)
-  lastError  String?  @db.Text
-  queuedAt   DateTime @default(now())
+  id         String    @id @default(uuid()) @db.Uuid
+  runId      String?   @db.Uuid
+  roomId     String    @db.Uuid
+  status     String    @default("QUEUED")
+  attempts   Int       @default(0)
+  lastError  String?   @db.Text
+  queuedAt   DateTime  @default(now())
   startedAt  DateTime?
   finishedAt DateTime?
 
   run  ScrapeRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
-  room Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
 
   @@index([runId])
   @@index([roomId])
@@ -130,10 +132,53 @@ model ScrapeJob {
 }
 
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
+  id           String   @id @default(uuid()) @db.Uuid
+  email        String   @unique
   passwordHash String
-  role      String   @default("admin")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role         String   @default("admin")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+}
+
+// Minimal NextAuth models (JWT sessions, but adapter requires tables)
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
 }

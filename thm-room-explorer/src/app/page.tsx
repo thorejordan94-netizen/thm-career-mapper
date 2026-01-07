@@ -26,7 +26,9 @@ export default async function Home({
           }
         : {}),
       ...(difficulty ? { difficulty: { equals: difficulty, mode: "insensitive" } } : {}),
-      ...(status ? { scrapeStatus: status as any } : {}),
+      ...(status && ["OK", "PENDING", "FAILED"].includes(status)
+        ? { scrapeStatus: status as "OK" | "PENDING" | "FAILED" }
+        : {}),
     },
     orderBy: [{ updatedAt: "desc" }],
     take: 48,
@@ -77,4 +79,3 @@ export default async function Home({
     </main>
   );
 }
-
