@@ -1,0 +1,163 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id              String   @id @default(uuid())
+  slug            String   @unique
+  name            String?
+  url             String
+  category        String?
+  description     String?  @db.Text
+  timeText        String?
+  difficulty      String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  lastScrapedAt   DateTime?
+  scrapeStatus    ScrapeStatus @default(PENDING)
+  scrapeError     String?  @db.Text
+  rawSourceHash   String?
+
+  tags            RoomTag[]
+  tools           RoomTool[]
+  lessons         Lesson[]
+  relevanceScores RelevanceAssessment[]
+
+  @@index([slug])
+  @@index([scrapeStatus])
+  @@index([difficulty])
+  @@index([category])
+}
+
+enum ScrapeStatus {
+  PENDING
+  IN_PROGRESS
+  OK
+  FAILED
+}
+
+model Tag {
+  id              String   @id @default(uuid())
+  nameCanonical   String   @unique
+  displayName     String
+  type            TagType
+  primaryCluster  String?
+  secondaryCluster String?
+  confidence      Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  rooms           RoomTag[]
+
+  @@index([type])
+  @@index([primaryCluster])
+}
+
+enum TagType {
+  DOMAIN
+  TACTIC
+  TECHNIQUE
+  TOOL_STACK
+  ARTIFACT_INDICATOR
+  PLATFORM_ENVIRONMENT
+}
+
+model RoomTag {
+  id           String @id @default(uuid())
+  roomId       String
+  tagId        String
+  originalText String
+  createdAt    DateTime @default(now())
+
+  room         Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tag          Tag    @relation(fields: [tagId], references: [id])
+
+  @@unique([roomId, tagId])
+  @@index([roomId])
+  @@index([tagId])
+}
+
+model Tool {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  displayName String
+  createdAt   DateTime @default(now())
+
+  rooms       RoomTool[]
+}
+
+model RoomTool {
+  id      String @id @default(uuid())
+  roomId  String
+  toolId  String
+
+  room    Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tool    Tool   @relation(fields: [toolId], references: [id])
+
+  @@unique([roomId, toolId])
+  @@index([roomId])
+  @@index([toolId])
+}
+
+model Lesson {
+  id      String @id @default(uuid())
+  roomId  String
+  content String @db.Text
+
+  room    Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@index([roomId])
+}
+
+model RelevanceAssessment {
+  id            String   @id @default(uuid())
+  roomId        String
+  rubricKey     String
+  score         Float
+  justification String   @db.Text
+  generatedBy   String   // "scraper" | "admin" | "auto"
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  room          Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, rubricKey])
+  @@index([roomId])
+}
+
+model ScrapeRun {
+  id          String    @id @default(uuid())
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  status      String    // "running" | "completed" | "failed"
+  totalRooms  Int
+  succeeded   Int       @default(0)
+  failed      Int       @default(0)
+  logs        String?   @db.Text
+
+  @@index([status])
+  @@index([startedAt])
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // hashed with bcrypt
+  name      String?
+  role      UserRole @default(ADMIN)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum UserRole {
+  ADMIN
+  VIEWER
+}
